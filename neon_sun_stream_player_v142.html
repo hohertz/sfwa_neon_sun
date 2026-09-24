@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEON SUN - Stream Player v1.42</title>
+
+  <!-- iOS Web-App Configuration -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="NEON SUN">
+  
+  <link rel="apple-touch-icon" href="neon_sun_icon.png">
+
+  <!-- Three: 1. Early connection setup -->
+  <link rel="preconnect" href="https://esm.sh">
+
+  <!-- Three: 2. Import Map (Placed early for optimal module specifier resolution) -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://esm.sh/three@0.170.0?exports=WebGLRenderer,Scene,PerspectiveCamera,FogExp2,PlaneGeometry,BufferGeometry,ShaderMaterial,LineBasicMaterial,Mesh,LineSegments,Vector2,Vector3,Vector4,Plane,Clock,Color,Float32BufferAttribute,Raycaster,AdditiveBlending&target=es2022"
+      }
+    }
+  </script>
+
+  <!-- Three: 3. Preload module while HTML is parsing -->
+  <link rel="modulepreload" href="https://esm.sh/three@0.170.0?exports=WebGLRenderer,Scene,PerspectiveCamera,FogExp2,PlaneGeometry,BufferGeometry,ShaderMaterial,LineBasicMaterial,Mesh,LineSegments,Vector2,Vector3,Vector4,Plane,Clock,Color,Float32BufferAttribute,Raycaster,AdditiveBlending&target=es2022">
+  
+  <!-- Fonts: Asynchronous non-blocking loading to improve First Contentful Paint -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" onload="this.rel='stylesheet'">
+  <noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  </noscript>
+  
+  <style>
+    /* ==========================================================================
+       1. GLOBAL VARIABLES & RESET
+       ========================================================================== */
+    :root {
+      --bg1: #150021;
+      --bg2: #2c0147;
+      --bg3: #46116b;
+      --magenta: #ff2d95;
+      --magenta2: #ff5cb8;
+      --cyan: #37e6ff;
+      --cyan2: #7cf3ff;
+      --violet: #9b5cff;
+      --ink: #e8d8ff;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      background: #0a0016;
+    }
+
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      color: var(--ink);
+      background: var(--bg1);
+    }
+
+    /* ==========================================================================
+       2. LOADING SCREEN & TRANSITIONS
+       ========================================================================== */
+    /* Transition for elements intended to appear after loading */
+    .sun, #scene, #horizon, .frame, .stats, .bottom {
+      transition: opacity 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Elements that should remain invisible during initial load */
+    body.is-loading .sun,
+    body.is-loading #scene,
+    body.is-loading #horizon,
+    body.is-loading .frame,
+    body.is-loading .stats,
+    body.is-loading .bottom {
+      opacity: 0 !important;
+      pointer-events: none;
+    }
+
+    #loader {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(1rem, 2.5vw, 1.5rem);
+      letter-spacing: 0.3em;
+      color: var(--cyan);
+      text-shadow: 0 0 12px rgba(55, 230, 255, 0.6);
+      transition: opacity 0.8s ease, visibility 0.8s;
+      pointer-events: none;
+    }
+
+    #loader::before {
+      content: "INITIALIZING";
+      animation: pulse-text 1.5s infinite;
+    }
+
+    @keyframes pulse-text {
+      0%, 100% { opacity: 0.4; text-shadow: 0 0 4px rgba(55, 230, 255, 0.3); }
+      50% { opacity: 1; text-shadow: 0 0 16px rgba(55, 230, 255, 0.8); }
+    }
+
+    body:not(.is-loading) #loader {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    /* ==========================================================================
+       3. BACKGROUND & SCENE EFFECTS
+       ========================================================================== */
+    #bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background:
+        radial-gradient(140% 120% at 50% 118%, rgba(255, 45, 149, 0.30), transparent 55%),
+        radial-gradient(120% 90% at 50% 120%, #2a0140 0%, transparent 62%),
+        linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 40%, var(--bg3) 66%, #5a1478 76%, #7a1c6d 82%, #2a0236 92%, #0a0016 100%);
+      animation: breathe 12s ease-in-out infinite;
+      will-change: opacity;
+    }
+
+    @keyframes breathe {
+      0%, 100% { opacity: 0.88; }
+      50% { opacity: 1.0; }
+    }
+
+    #scene {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    #horizon {
+      position: fixed;
+      left: 0;
+      right: 0;
+      top: 50%;
+      z-index: 2;
+      pointer-events: none;
+      height: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(55, 230, 255, 0.55) 12%, var(--cyan) 28%, #fff 50%, var(--cyan) 72%, rgba(55, 230, 255, 0.55) 88%, transparent 100%);
+      box-shadow: 0 0 40px 6px rgba(55, 230, 255, 0.55), 0 0 90px 12px rgba(255, 45, 149, 0.35);
+      animation: glow 3.4s ease-in-out infinite;
+      will-change: filter;
+    }
+
+    @keyframes glow {
+      0%, 100% { filter: brightness(0.85); }
+      50% { filter: brightness(1.1); }
+    }
+
+    .sun {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      z-index: 1;
+      pointer-events: none;
+      width: min(58vmin, 460px);
+      height: min(58vmin, 460px);
+      transform: translate(-50%, -88%);
+      background: 
+        repeating-linear-gradient(to top, transparent 0 11px, rgba(10, 0, 22, 0.9) 11px 15px),
+        linear-gradient(180deg, #ffd36b 0%, #ff9d4d 26%, #ff5470 46%, #ff2d95 64%, #8b1fd8 100%);
+      border-radius: 50%;
+      box-shadow: 0 0 80px 20px rgba(255, 120, 90, 0.55), 0 0 150px 55px rgba(255, 45, 149, 0.35);
+      animation: sunfloat 9s ease-in-out infinite;
+      will-change: transform, filter;
+    }
+
+    .sun::before {
+      content: "";
+      position: absolute;
+      inset: -22%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 180, 120, 0.5), transparent 62%);
+      filter: blur(8px);
+    }
+
+    @keyframes sunfloat {
+      0%, 100% { transform: translate(-50%, -88%); filter: brightness(0.95); }
+      50% { transform: translate(-50%, -92%); filter: brightness(1.05); }
+    }
+
+    .grain {
+      position: fixed;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      background-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 3px);
+      mix-blend-mode: overlay;
+      opacity: 0.5;
+      animation: scan 8s linear infinite;
+    }
+
+    @keyframes scan {
+      from { transform: translateY(0); }
+      to { transform: translateY(3px); }
+    }
+
+    .vignette {
+      position: fixed;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      background: radial-gradient(120% 90% at 50% 42%, transparent 45%, rgba(0, 0, 0, 0.55) 100%);
+    }
+
+    .frame {
+      position: fixed;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+    }
+
+    .frame i {
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      border: 2px solid rgba(55, 230, 255, 0.55);
+    }
+    .frame i:nth-child(1) { top: 14px; left: 14px; border-right: 0; border-bottom: 0; }
+    .frame i:nth-child(2) { top: 14px; right: 14px; border-left: 0; border-bottom: 0; }
+    .frame i:nth-child(3) { bottom: 14px; left: 14px; border-right: 0; border-top: 0; }
+    .frame i:nth-child(4) { bottom: 14px; right: 14px; border-left: 0; border-top: 0; }
+
+    /* ==========================================================================
+       4. UI OVERLAY
+       ========================================================================== */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+      padding: clamp(18px, 3vw, 42px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+    }
+
+    .corner {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      font-size: clamp(0.62rem, 1.5vw, 0.82rem);
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: rgba(232, 216, 255, 0.72);
+    }
+    
+    .subtle-link {
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 12px var(--cyan);
+      animation: blink 1.6s steps(1) infinite;
+    }
+
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0.25; }
+    }
+
+    .title {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 900;
+      font-size: clamp(2.4rem, 8.5vw, 6.4rem);
+      line-height: 0.92;
+      letter-spacing: 0.02em;
+      color: #fff;
+      text-shadow: 
+        0 0 8px rgba(255, 45, 149, 0.9), 
+        0 0 26px rgba(255, 45, 149, 0.6), 
+        0 4px 2px rgba(55, 230, 255, 0.55), 
+        3px 3px 0 rgba(120, 0, 140, 0.5);
+      animation: chroma 4s ease-in-out infinite;
+    }
+
+    .title span {
+      display: block;
+    }
+
+    @keyframes chroma {
+      0%, 100% {
+        text-shadow: 0 0 8px rgba(255, 45, 149, 0.9), 0 0 26px rgba(255, 45, 149, 0.6), 0 4px 2px rgba(55, 230, 255, 0.5), 3px 3px 0 rgba(120, 0, 140, 0.5);
+      }
+      50% {
+        text-shadow: 0 0 12px rgba(55, 230, 255, 0.95), 0 0 34px rgba(255, 45, 149, 0.7), 0 5px 3px rgba(255, 45, 149, 0.55), -3px 3px 0 rgba(120, 0, 140, 0.5);
+      }
+    }
+
+    .subtitle {
+      margin-top: 0.75rem;
+      font-size: clamp(0.7rem, 1.8vw, 1.15rem);
+      letter-spacing: 0.42em;
+      text-transform: uppercase;
+      color: var(--cyan2);
+      text-shadow: 0 0 12px rgba(55, 230, 255, 0.6);
+      display: inline-block;
+      position: relative;
+      padding-left: 0.1em;
+    }
+
+    .subtitle::before {
+      content: "";
+      position: absolute;
+      left: -1.4em;
+      top: 50%;
+      width: 2.4em;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan));
+      transform: translateY(-50%);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(1, auto);
+      gap: 8px 26px;
+      text-align: right;
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+      line-height: 1;
+    }
+
+    .stat .k {
+      font-size: 0.6rem;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      color: rgba(232, 216, 255, 0.5);
+    }
+
+    .stat .v {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 500;
+      font-size: clamp(0.9rem, 1.9vw, 1.15rem);
+      letter-spacing: 0.06em;
+      color: var(--cyan2);
+      text-shadow: 0 0 10px rgba(55, 230, 255, 0.6);
+      font-variant-numeric: tabular-nums;
+      transition: 0.1s;
+    }
+
+    /* ==========================================================================
+       5. AUDIO PLAYER & INTERACTION
+       ========================================================================== */
+    .bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 20px;
+      flex-wrap: wrap;
+      pointer-events: none; 
+    }
+
+    .bottom-left {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      pointer-events: auto; 
+    }
+
+    .hint {
+      font-size: clamp(0.62rem, 1.4vw, 0.8rem);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(232, 216, 255, 0.55);
+      max-width: 34ch;
+      line-height: 1.7;
+    }
+
+    .hint b {
+      color: var(--magenta2);
+      text-shadow: 0 0 10px rgba(255, 45, 149, 0.6);
+      font-weight: 600;
+    }
+
+    .player-box {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      background: rgba(10, 0, 22, 0.65);
+      border: 1px solid rgba(55, 230, 255, 0.2);
+      padding: 12px 20px;
+      border-radius: 6px;
+      box-shadow: 0 0 20px rgba(55, 230, 255, 0.05), inset 0 0 10px rgba(255, 45, 149, 0.05);
+      backdrop-filter: blur(8px);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .player-controls {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .play-btn {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(30, 0, 50, 0.8) 0%, rgba(55, 5, 85, 0.8) 100%);
+      border: 1px solid rgba(55, 230, 255, 0.35);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.15), 0 0 12px rgba(55, 230, 255, 0.15);
+      color: var(--cyan);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      outline: none;
+    }
+
+    .play-btn:hover {
+      border-color: var(--magenta2);
+      color: var(--magenta2);
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.25), 0 0 18px rgba(255, 45, 149, 0.4);
+    }
+
+    .play-btn:active {
+      box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.7), 0 0 8px rgba(255, 45, 149, 0.3);
+    }
+
+    .play-btn.is-playing {
+      color: var(--magenta2);
+      border-color: rgba(255, 45, 149, 0.5);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.15), 0 0 15px rgba(255, 45, 149, 0.25);
+    }
+
+    .play-btn.is-playing:hover {
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.25), 0 0 22px rgba(255, 45, 149, 0.5);
+    }
+
+    .play-btn svg, .play-btn .spinner {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      transition: all 0.2s ease;
+    }
+
+    .play-btn svg {
+      fill: currentColor;
+      filter: drop-shadow(0 0 4px currentColor);
+    }
+
+    .spinner {
+      border: 2.5px solid rgba(55, 230, 255, 0.15);
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      filter: drop-shadow(0 0 4px currentColor);
+    }
+
+    @keyframes spin { 
+      100% { transform: rotate(360deg); } 
+    }
+
+    .stream-input-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    
+    .stream-input-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stream-label {
+      font-size: 0.55rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--cyan2);
+      opacity: 0.7;
+    }
+
+    .stream-url {
+      background: transparent;
+      border: none;
+      border-bottom: 1px dashed rgba(232, 216, 255, 0.3);
+      color: var(--ink);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 0.75rem;
+      padding: 2px 0;
+      outline: none;
+      text-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
+      
+      min-width: 150px;
+      max-width: 100vw;
+      field-sizing: content;
+      transition: color 0.3s, border-color 0.3s; 
+    }
+
+    .stream-url:focus {
+      border-bottom-color: var(--magenta);
+      color: #fff;
+    }
+
+    .dropdown-btn {
+      background: rgba(55, 230, 255, 0.05);
+      border: 1px solid rgba(55, 230, 255, 0.3);
+      border-radius: 4px;
+      margin-left: 12px;
+      color: var(--cyan);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      transition: all 0.3s;
+      outline: none;
+    }
+
+    .dropdown-btn:hover {
+      background: rgba(55, 230, 255, 0.2);
+    }
+
+    .dropdown-btn svg {
+      transition: transform 0.3s ease;
+    }
+
+    .dropdown-btn.open svg {
+      transform: rotate(180deg);
+    }
+
+    .stream-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), margin-top 0.4s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stream-list.open {
+      max-height: 120px;
+      margin-top: 14px;
+    }
+
+    .stream-list li {
+      font-size: 0.75rem;
+      color: rgba(232, 216, 255, 0.7);
+      cursor: pointer;
+      padding: 6px 12px;
+      background: rgba(55, 230, 255, 0.05);
+      border-radius: 4px;
+      transition: background 0.2s, color 0.2s;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-left: 2px solid transparent;
+    }
+
+    .stream-list li:hover {
+      background: rgba(255, 45, 149, 0.15);
+      color: #fff;
+      border-left-color: var(--magenta);
+    }
+
+    /* ==========================================================================
+       6. EQUALIZER
+       ========================================================================== */
+    .eq {
+      display: flex;
+      align-items: flex-end;
+      gap: 5px;
+      height: 64px;
+      pointer-events: none;
+    }
+
+    .eq .bar {
+      width: 7px;
+      height: 100%;
+      border-radius: 3px 3px 0 0;
+      background: linear-gradient(to top, var(--magenta), var(--cyan));
+      box-shadow: 0 0 10px rgba(255, 45, 149, 0.55), 0 0 18px rgba(55, 230, 255, 0.35);
+      transform-origin: bottom;
+      transform: scaleY(0.05); 
+      will-change: transform;
+    }
+
+    /* ==========================================================================
+       7. RESPONSIVE DESIGN (MOBILE)
+       ========================================================================== */
+    @media (max-width: 640px) {
+      .stats { grid-template-columns: repeat(2, auto); gap: 6px 18px; }
+      .subtitle::before { display: none; }
+      .bottom { align-items: flex-start; }
+      .eq { display: none; }
+    }
+  </style>
+</head>
+<body class="is-loading">
+
+  <!-- LOADING INDICATOR -->
+  <div id="loader"></div>
+
+  <!-- BACKGROUND LAYERS -->
+  <div id="bg"></div>
+  <div class="sun"></div>
+  <canvas id="scene"></canvas>
+  <div id="horizon"></div>
+  <div class="grain"></div>
+  <div class="vignette"></div>
+  <div class="frame"><i></i><i></i><i></i><i></i></div>
+
+  <!-- HUD / UI OVERLAY -->
+  <div class="overlay">
+    
+    <div class="top">
+      <div>
+        <div class="corner"><span class="dot"></span> <span>Created by <a href="https://www.retropc.zone" target="_blank" rel="noopener noreferrer" class="subtle-link">retropc.zone</a></span></div>
+        <h1 class="title"><span>NEON</span><span>SUN</span></h1>
+        <div class="subtitle">Stream Player v1.42</div>
+      </div>
+      
+      <div class="stats">
+        <div class="stat"><span class="k">Clock</span><span class="v" id="clock">00:00</span></div>
+        <div class="stat"><span class="k">Wave</span><span class="v" id="wave">0.0</span></div>
+        <div class="stat"><span class="k">FPS</span><span class="v" id="fps">60</span></div>
+        <div class="stat"><span class="k">Live BPM</span><span class="v" id="bpm">---</span></div>
+      </div>
+    </div>
+    
+    <div class="bottom">
+      <div class="bottom-left">
+        <p class="hint">Bewege die Maus, um das <b>Gitter</b> zu stören —<br>Klicke auf das Raster für einen <b>Impuls</b>.</p>
+        
+        <div class="player-box">
+          <div class="player-controls">
+            <audio id="radio-audio" crossorigin="anonymous" src="https://stream.nightride.fm/spacesynth.mp3"></audio>
+            
+            <button id="play-btn" class="play-btn" title="Play/Pause">
+              <svg class="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            
+            <div class="stream-input-wrap">
+              <span class="stream-label">Stream COM-LINK</span>
+              <div class="stream-input-row">
+                <input type="text" id="stream-url" class="stream-url" value="https://stream.nightride.fm/spacesynth.mp3" title="Eigene Stream-URL eingeben">
+                <button id="dropdown-btn" class="dropdown-btn" title="Stream-Auswahl">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <ul id="stream-list" class="stream-list">
+            <li data-url="https://stream.nightride.fm/chillsynth.mp3">Nightride - ChillSynth</li>
+            <li data-url="https://stream.nightride.fm/spacesynth.mp3">Nightride - SpaceSynth</li>
+            <li data-url="https://stream.nightride.fm/darksynth.mp3">Nightride - DarkSynth</li>
+          </ul>
+        </div>
+      </div>
+      
+      <!-- Equalizer bars -->
+      <div class="eq" id="eq"></div>
+    </div>
+    
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    const elClock = document.getElementById('clock');
+    
+    function updateClock() {
+      const now = new Date();
+      elClock.textContent = now.toLocaleTimeString(navigator.language, { 
+        hour12: false, hour: '2-digit', minute: '2-digit' 
+      });
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    const audioEl = document.getElementById('radio-audio');
+    const playBtn = document.getElementById('play-btn');
+    const urlInput = document.getElementById('stream-url');
+    const dropdownBtn = document.getElementById('dropdown-btn');
+    const streamList = document.getElementById('stream-list');
+    
+    const ICON_PLAY = `<svg class="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+    const ICON_PAUSE = `<svg class="icon-pause" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+    const ICON_SPINNER = `<div class="spinner"></div>`;
+
+    function adjustUrlWidth() {
+      if (!CSS.supports('field-sizing', 'content')) {
+        urlInput.style.width = `calc(${Math.max(15, urlInput.value.length)} * 0.75ch + 15px)`;
+      }
+    }
+
+    adjustUrlWidth();
+    urlInput.addEventListener('input', adjustUrlWidth);
+
+    audioEl.volume = 1.0; 
+
+    let audioCtx, analyser, audioSource;
+    let audioDataArray;
+    let isAudioSetup = false;
+    let targetWaveValue = 0.3; 
+
+    function initWebAudio() {
+      if (isAudioSetup) return;
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioContext();
+      
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256; 
+      analyser.smoothingTimeConstant = 0.85; 
+      
+      audioDataArray = new Uint8Array(analyser.frequencyBinCount);
+      
+      audioSource = audioCtx.createMediaElementSource(audioEl);
+      audioSource.connect(analyser);
+      analyser.connect(audioCtx.destination);
+      
+      isAudioSetup = true;
+    }
+
+    audioEl.addEventListener('waiting', () => { 
+      if (!audioEl.paused) playBtn.innerHTML = ICON_SPINNER; 
+    });
+    
+    audioEl.addEventListener('playing', () => { 
+      playBtn.innerHTML = ICON_PAUSE; 
+      playBtn.classList.add('is-playing'); 
+    });
+    
+    audioEl.addEventListener('pause', () => { 
+      playBtn.innerHTML = ICON_PLAY; 
+      playBtn.classList.remove('is-playing'); 
+    });
+
+    playBtn.addEventListener('click', () => {
+      initWebAudio();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      
+      if (audioEl.paused) {
+        playBtn.innerHTML = ICON_SPINNER;
+        audioEl.play().catch(err => {
+          console.error("Audio blocked:", err);
+          playBtn.innerHTML = ICON_PLAY;
+          alert("Stream could not be loaded.");
+        });
+      } else {
+        audioEl.pause();
+      }
+    });
+    
+    urlInput.addEventListener('change', (e) => {
+      adjustUrlWidth(); 
+      
+      const isPlaying = !audioEl.paused;
+      if (e.target.value.trim()) {
+        audioEl.src = e.target.value.trim();
+        if (isPlaying) {
+          playBtn.innerHTML = ICON_SPINNER;
+          audioEl.play().catch(console.error);
+        }
+      }
+    });
+    
+    dropdownBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdownBtn.classList.toggle('open');
+      streamList.classList.toggle('open');
+    });
+
+    streamList.addEventListener('click', (e) => {
+      const li = e.target.closest('li');
+      if (!li) return;
+      
+      const newUrl = li.getAttribute('data-url');
+      urlInput.value = newUrl;
+      
+      dropdownBtn.classList.remove('open');
+      streamList.classList.remove('open');
+      
+      urlInput.dispatchEvent(new Event('change'));
+      if(audioEl.paused) playBtn.click();
+    });
+
+    document.querySelector('.player-box').addEventListener('pointerdown', (e) => e.stopPropagation());
+
+    const canvas = document.getElementById('scene');
+    
+    /* Configured WebGLRenderer with GPU powerPreference hints for better performance */
+    const renderer = new THREE.WebGLRenderer({ 
+      canvas, 
+      antialias: true, 
+      alpha: true,
+      powerPreference: 'high-performance' 
+    });
+    
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    const scene = new THREE.Scene();
+    const FOG_COLOR = new THREE.Color(0x16002e);
+    const FOG_DENSITY = 0.02;
+    scene.fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY);
+
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 6.5, 16);
+    camera.lookAt(0, 1, -4);
+
+    const SIZE = 260;
+    const DIV = 140;  
+    
+    const geometry = new THREE.PlaneGeometry(SIZE, SIZE, DIV, DIV);
+    geometry.rotateX(-Math.PI / 2);
+
+    const MAX_RIPPLES = 10;
+    const rippleUniforms = [];
+    for (let i = 0; i < MAX_RIPPLES; i++) {
+      rippleUniforms.push(new THREE.Vector4(0, 0, -999, 1)); 
+    }
+
+    const gridMaterial = new THREE.ShaderMaterial({
+      wireframe: true,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      uniforms: {
+        uTime: { value: 0 },
+        uWave: { value: 0.3 },
+        uHoverPos: { value: new THREE.Vector3(0, 0, 0) },
+        uIsHovered: { value: 0.0 },
+        uRipples: { value: rippleUniforms },
+        uRippleCount: { value: 0 },
+        uOpacity: { value: 0.9 },
+        uFogColor: { value: FOG_COLOR },
+        uFogDensity: { value: FOG_DENSITY }
+      },
+      vertexShader: `
+        uniform float uTime;
+        uniform float uWave;
+        uniform vec3 uHoverPos;
+        uniform float uIsHovered;
+        uniform vec4 uRipples[10];
+        uniform int uRippleCount;
+
+        varying vec3 vColor;
+        varying float vFogDepth;
+
+        const vec3 cLow  = vec3(0.10588, 0.0, 0.18823);
+        const vec3 cMid  = vec3(1.0, 0.17647, 0.58431);
+        const vec3 cHigh = vec3(0.21568, 0.90196, 1.0);
+
+        void main() {
+          vec3 pos = position;
+          float freq = 0.30;
+          float phase1 = pos.x * freq + pos.z * freq * 0.6;
+          float phase2 = (pos.x * 0.5 - pos.z) * freq * 0.5;
+
+          float amp = 1.1 * uWave;
+          float waveSpeed = 1.6;
+          float bright = 0.85 + (uWave * 0.4);
+
+          float tSpeed1 = uTime * waveSpeed;
+          float tSpeed2 = uTime * waveSpeed * 0.7;
+
+          float y = sin(phase1 + tSpeed1) * amp + cos(phase2 - tSpeed2) * (amp * 0.55);
+
+          if (uIsHovered > 0.5) {
+            float dx = pos.x - uHoverPos.x;
+            float dz = pos.z - uHoverPos.z;
+            y += exp(-(dx * dx + dz * dz) * 0.01) * 3.8;
+          }
+
+          for (int i = 0; i < 10; i++) {
+            if (i >= uRippleCount) break;
+            vec4 rip = uRipples[i];
+            float dxR = pos.x - rip.x;
+            float dzR = pos.z - rip.y; 
+            float distR = sqrt(dxR * dxR + dzR * dzR);
+            float waveFront = distR - rip.z; 
+            
+            if (waveFront > -12.0 && waveFront < 12.0) {
+              float fadeOut = max(0.0, 1.0 - rip.z / rip.w);
+              float waveShape = cos(waveFront * 0.5) * exp(-(waveFront * waveFront) * 0.04);
+              y += waveShape * 4.5 * fadeOut;
+            }
+          }
+
+          pos.y = y;
+
+          float ampPlus2Inv = 1.0 / (amp + 2.0);
+          float n = clamp((y * ampPlus2Inv) + 0.5, 0.0, 1.0);
+
+          vec3 col;
+          if (n < 0.5) {
+            col = mix(cLow, cMid, n * 2.0);
+          } else {
+            col = mix(cMid, cHigh, (n - 0.5) * 2.0);
+          }
+          vColor = col * bright;
+
+          vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+          vFogDepth = -mvPosition.z;
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vColor;
+        varying float vFogDepth;
+        uniform float uOpacity;
+        uniform vec3 uFogColor;
+        uniform float uFogDensity;
+
+        void main() {
+          float fogFactor = exp2(-uFogDensity * uFogDensity * vFogDepth * vFogDepth * 1.442695);
+          fogFactor = clamp(fogFactor, 0.0, 1.0);
+          
+          vec3 finalColor = mix(uFogColor, vColor, fogFactor);
+          gl_FragColor = vec4(finalColor, uOpacity);
+        }
+      `
+    });
+    
+    const gridMesh = new THREE.Mesh(geometry, gridMaterial);
+    gridMesh.frustumCulled = false; 
+    scene.add(gridMesh);
+
+    const majorGeo = new THREE.BufferGeometry();
+    const majorPos = [];
+    const step = SIZE / 40;
+    for (let i = 0; i <= 40; i++) {
+      const x = -SIZE / 2 + i * step;
+      majorPos.push(x, 0, -SIZE / 2, x, 0, SIZE / 2);
+      const z = -SIZE / 2 + i * step;
+      majorPos.push(-SIZE / 2, 0, z, SIZE / 2, 0, z);
+    }
+    majorGeo.setAttribute('position', new THREE.Float32BufferAttribute(majorPos, 3));
+    const majorMat = new THREE.LineBasicMaterial({
+      color: 0x37e6ff, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, fog: true
+    });
+    scene.add(new THREE.LineSegments(majorGeo, majorMat));
+
+    const horizonGeo = new THREE.BufferGeometry();
+    horizonGeo.setAttribute('position', new THREE.Float32BufferAttribute([-SIZE / 2, 0, -SIZE / 2, SIZE / 2, 0, -SIZE / 2], 3));
+    const horizonMat = new THREE.LineBasicMaterial({
+      color: 0x37e6ff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, fog: true
+    });
+    scene.add(new THREE.LineSegments(horizonGeo, horizonMat));
+
+    const raycaster = new THREE.Raycaster();
+    const mouseNDC = new THREE.Vector2(-999, -999);
+    const hoverPos = new THREE.Vector3(0, 0, 0);
+    let isHovered = false;
+    let mouseMoved = false;
+    const ripples = [];
+    const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const intersectPoint = new THREE.Vector3();
+
+    /* Added passive option to improve pointer interaction performance */
+    window.addEventListener('pointermove', (e) => {
+      mouseNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      mouseMoved = true;
+    }, { passive: true });
+
+    window.addEventListener('pointerdown', (e) => {
+      if(e.target.closest('.overlay')) return; 
+      raycaster.setFromCamera(mouseNDC, camera);
+      if (raycaster.ray.intersectPlane(groundPlane, intersectPoint)) {
+        ripples.push({ x: intersectPoint.x, z: intersectPoint.z, t: 0, maxRadius: 80 });
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    const eq = document.getElementById('eq');
+    const bars = [];
+    const lastBarScales = new Float32Array(26);
+    const NBARS = 26;
+    
+    for (let i = 0; i < NBARS; i++) {
+      const b = document.createElement('div');
+      b.className = 'bar';
+      eq.appendChild(b);
+      bars.push(b);
+    }
+    
+    const elBpm = document.getElementById('bpm');
+    const elWave = document.getElementById('wave');
+    const elFps = document.getElementById('fps');
+    
+    let lastWaveStr = "";
+    let lastBpmStr = "---";
+
+    let lastBeatTime = performance.now();
+    let beatIntervals = [];
+    const sortBuffer = new Float32Array(15); 
+    let currentBpm = 0;
+    let beatThreshold = 150;
+    let lastBassEnergy = 0;
+
+    const clock = new THREE.Clock();
+    let fpsAcc = 0, fpsFrames = 0, fpsTimer = 0;
+    const maxLog = Math.log(110); 
+
+    const fpsLimit = 60;
+    const fpsInterval = 1000 / fpsLimit;
+    let then = performance.now();
+
+    function animate(newtime) {
+      requestAnimationFrame(animate);
+      
+      const now = newtime || performance.now();
+      const elapsed = now - then;
+      
+      if (elapsed < fpsInterval) return; 
+      then = now - (elapsed % fpsInterval);
+
+      const dt = clock.getDelta();
+      const t = clock.elapsedTime;
+      
+      let audioEnergy = 0;
+
+      if (isAudioSetup && !audioEl.paused) {
+        analyser.getByteFrequencyData(audioDataArray);
+        
+        let sum = 0;
+        let isSilent = true;
+
+        for (let i = 0; i < NBARS; i++) {
+          const ratio = i / (NBARS - 1);
+          const binIndex = Math.floor(Math.exp(ratio * maxLog));
+          const val = audioDataArray[Math.min(127, binIndex)];
+          
+          sum += val;
+          if (val > 0) isSilent = false;
+          
+          const scale = Math.max(0.05, val / 255);
+          if (Math.abs(scale - lastBarScales[i]) > 0.01) {
+            bars[i].style.transform = `scaleY(${scale.toFixed(2)})`;
+            lastBarScales[i] = scale;
+          }
+        }
+        
+        if (!isSilent) {
+          audioEnergy = (sum / NBARS) / 255; 
+          
+          const bassEnergy = (audioDataArray[0] + audioDataArray[1] + audioDataArray[2] + audioDataArray[3]) / 4;
+          const perfNow = performance.now();
+          
+          if (bassEnergy > beatThreshold && bassEnergy > lastBassEnergy && (perfNow - lastBeatTime) > 350) {
+            const interval = perfNow - lastBeatTime;
+            lastBeatTime = perfNow;
+            
+            beatThreshold = Math.min(250, bassEnergy + 10); 
+            
+            if (interval < 1500 && interval > 350) {
+              beatIntervals.push(interval);
+              if (beatIntervals.length > 15) beatIntervals.shift(); 
+              
+              const len = beatIntervals.length;
+              for (let k = 0; k < len; k++) sortBuffer[k] = beatIntervals[k];
+              const sorted = sortBuffer.subarray(0, len).sort();
+              const medianInterval = sorted[Math.floor(len / 2)];
+              
+              let targetBpm = Math.round(60000 / medianInterval);
+              
+              if (currentBpm === 0) {
+                currentBpm = targetBpm;
+              } else {
+                currentBpm = currentBpm * 0.85 + targetBpm * 0.15;
+              }
+              
+              const newBpmStr = Math.round(currentBpm).toString();
+              if (newBpmStr !== lastBpmStr) {
+                elBpm.textContent = newBpmStr;
+                lastBpmStr = newBpmStr;
+              }
+            }
+          }
+          beatThreshold = Math.max(120, beatThreshold - 0.2); 
+          lastBassEnergy = bassEnergy;
+
+        } else {
+          audioEnergy = Math.sin(t * 2.3) * 0.15;
+        }
+      } else {
+        for (let i = 0; i < NBARS; i++) {
+          if (lastBarScales[i] !== 0.05) {
+            bars[i].style.transform = 'scaleY(0.05)';
+            lastBarScales[i] = 0.05;
+          }
+        }
+        
+        if (lastBpmStr !== "---") {
+          lastBpmStr = "---";
+          elBpm.textContent = lastBpmStr;
+          currentBpm = 0;
+          beatIntervals = []; 
+        }
+      }
+
+      let rawPulse = isAudioSetup && !audioEl.paused 
+        ? 0.3 + (audioEnergy * 2.0) 
+        : Math.sin(t * 2.3) * 0.25 + 1.00;
+
+      targetWaveValue += (rawPulse - targetWaveValue) * 0.1;
+
+      if (mouseMoved) {
+        raycaster.setFromCamera(mouseNDC, camera);
+        if (raycaster.ray.intersectPlane(groundPlane, intersectPoint)) {
+          hoverPos.lerp(intersectPoint, 0.25);
+          isHovered = true;
+        } else {
+          isHovered = false;
+        }
+        mouseMoved = false;
+      }
+
+      for (let r = ripples.length - 1; r >= 0; r--) {
+        ripples[r].t += dt * 14;
+        if (ripples[r].t > ripples[r].maxRadius) ripples.splice(r, 1);
+      }
+
+      gridMaterial.uniforms.uTime.value = t;
+      gridMaterial.uniforms.uWave.value = targetWaveValue;
+      gridMaterial.uniforms.uHoverPos.value.copy(hoverPos);
+      gridMaterial.uniforms.uIsHovered.value = isHovered ? 1.0 : 0.0;
+      gridMaterial.uniforms.uOpacity.value = 0.82 + (targetWaveValue * 0.16);
+
+      const rCount = Math.min(ripples.length, MAX_RIPPLES);
+      for (let r = 0; r < MAX_RIPPLES; r++) {
+        if (r < rCount) {
+          rippleUniforms[r].set(ripples[r].x, ripples[r].z, ripples[r].t, ripples[r].maxRadius);
+        } else {
+          rippleUniforms[r].set(0, 0, -999, 1);
+        }
+      }
+      gridMaterial.uniforms.uRippleCount.value = rCount;
+
+      camera.position.x = Math.sin(t * 0.12) * 1.2;
+      camera.position.y = 6.5 + Math.sin(t * 0.2) * 0.4;
+      camera.lookAt(Math.sin(t * 0.12) * 0.4, 1, -4);
+
+      majorMat.opacity = 0.12 + (targetWaveValue * 0.12);
+      horizonMat.opacity = 0.4 + (targetWaveValue * 0.3);
+
+      const newWaveStr = targetWaveValue.toFixed(1);
+      if (newWaveStr !== lastWaveStr) {
+        elWave.textContent = newWaveStr;
+        lastWaveStr = newWaveStr;
+      }
+
+      fpsAcc += dt; 
+      fpsFrames++; 
+      fpsTimer += dt;
+      if (fpsTimer >= 0.5) {
+        elFps.textContent = Math.round(fpsFrames / fpsAcc);
+        fpsAcc = 0; 
+        fpsFrames = 0; 
+        fpsTimer = 0;
+      }
+
+      renderer.render(scene, camera);
+    }
+    
+    // --- LOADING SCREEN & INITIALIZATION ---
+    // Forces WebGL renderer to precompile shaders (prevents stuttering on first frame)
+    renderer.compile(scene, camera);
+    
+    // Brief artificial delay (800ms) in case script loads ultra-fast from cache.
+    // Prevents the "INITIALIZING" screen from flickering briefly.
+    setTimeout(() => {
+      document.body.classList.remove('is-loading');
+      requestAnimationFrame(animate);
+    }, 800);
+
+  </script>
+</body>
+</html>
