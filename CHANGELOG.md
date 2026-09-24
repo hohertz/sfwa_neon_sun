@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.2] - 2026-09-24
+
+### Changed
+- Reordered script tag hierarchy by moving the `<script type="importmap">` tag above preloading directives to ensure optimal specifier resolution during module parsing.
+- Refactored Google Fonts embedding to use asynchronous, non-blocking stylesheet preloading with `<noscript>` fallbacks to improve First Contentful Paint (FCP).
+- Optimized 3D WebGL context initialization by configuring the `powerPreference: 'high-performance'` hint on `THREE.WebGLRenderer`.
+- Improved input responsiveness during interactive grid manipulation by adding passive event listening to `pointermove` events.
+- Updated UI text branding to display version v1.42.
+
+## [1.4.1] - 2026-09-24
+
+### Changed
+- Refactored `three.js` import structure to selective named exports targeting ES2022 to optimize bundle delivery.
+- Added preconnect (`https://esm.sh`) and `modulepreload` links for Three.js v0.170.0 to improve initial load performance.
+- Updated application UI version display to v1.41.
+
 ## [1.4.0] - 2026-09-24
 
 ### Added
