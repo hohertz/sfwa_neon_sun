@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.4] - 2026-06-06
+
+### Added
+- Added a dedicated low-pass biquad filter with a 120 Hz cutoff frequency for precise kick drum frequency isolation.
+- Introduced a separate `beatAnalyser` node featuring a smaller FFT size and faster smoothing time constant specifically optimized for beat tracking.
+
+### Changed
+- Refactored the Web Audio API processing pipeline to use parallel routing for independent visual spectrum analysis and beat detection.
+
+## [1.4.3] - 2026-09-24
+
+### Added
+- Centralized `AUDIO_CONFIG` configuration object for tuning audio reactivity, thresholds, smoothing factors, and decay rates.
+- SEO description meta tag for improved search engine snippet generation.
+- Mobile web app capability meta tags and `viewport-fit=cover` for edge-to-edge mobile display support.
+- Explicit `sizes="180x180"` attribute on the Apple touch icon link reference.
+
+### Changed
+- Overhauled beat and kick detection with strict multi-gate verification (`MIN_OVERALL_VOLUME`, `ABSOLUTE_MIN_GATE`, and cooldown lockout periods).
+- Upgraded live BPM estimation with dynamic threshold boosting, smooth decay, and automatic half-tempo correction for detected tempos above 180 BPM.
+- Enhanced mesh wave reactivity to combine persistent baseline waviness with dynamic sub-bass impulse scaling.
+- Bumped application title and version display to v1.43.
+
+### Fixed
+- Prevented false positive beat triggers and erratic visual pulsing during quiet audio passages by enforcing global volume and sub-bass energy gates.
+
 ## [1.4.2] - 2026-09-24
 
 ### Changed
