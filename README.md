@@ -1,4 +1,4 @@
-# NEON SUN - Stream Player v1.32
+# NEON SUN - Stream Player v1.40
 
 **NEON SUN** is a standalone Single Page Web Application (SPWA) that combines an online audio stream player with an interactive, real-time 3D WebGL visualizer. Wrapped in an 80s synthwave/outrun aesthetic, the application analyzes live audio feeds to dynamically deform a 3D terrain grid and display real-time telemetry metrics such as BPM and wave intensity.
 
@@ -39,9 +39,11 @@
 
 Since **NEON SUN** is built as a self-contained Single Page Web Application inside a single HTML file, setup is straightforward:
 
-1. Download or clone `neon_sun_stream_player_v132.min.html`.
-2. **CORS Requirement:** Due to browser Web Audio API security policies regarding cross-origin audio analysis, run the file through a **local HTTP server** (e.g., `python -m http.server` or VS Code Live Server) rather than opening it directly as a local file (`file://`).
-3. Open the local server URL in any modern web browser (Chrome, Edge, Firefox, or Safari).
+* **Quick Start (Online):** Launch the app directly in your browser via [GitHub Pages](https://hohertz.github.io/sfwa_neon_sun/).
+* **Local Setup:**
+  1. Clone or download the repository from [GitHub](https://github.com/hohertz/sfwa_neon_sun). The latest minified version is always available as `index.html`.
+  2. **CORS Requirement:** Due to browser Web Audio API security policies regarding cross-origin audio analysis, run `index.html` through a **local HTTP server** (e.g., `python -m http.server` or VS Code Live Server) rather than opening it directly as a local file (`file://`).
+  3. Open the local server URL in any modern web browser (Chrome, Edge, Firefox, or Safari).
 
 ---
 
