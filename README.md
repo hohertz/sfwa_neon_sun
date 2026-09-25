@@ -1,4 +1,4 @@
-# NEON SUN - Stream Player v1.42
+# NEON SUN - Stream Player v1.4.5
 
 **NEON SUN** is a standalone Single Page Web Application (SPWA) that combines an online audio stream player with an interactive, real-time 3D WebGL visualizer. Wrapped in an 80s synthwave/outrun aesthetic, the application analyzes live audio feeds to dynamically deform a 3D terrain grid and display real-time telemetry metrics such as BPM and wave intensity.
 
