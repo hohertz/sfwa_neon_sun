@@ -19,7 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Fixed
 - Improved DOM structure around the player controls by introducing a dedicated container (`.player-btn-wrap`) to cleanly layer overlay indicators over the play button.
 
-## [1.4.4] - 2026-06-06
+## [1.4.4] - 2026-09-24
 
 ### Added
 - Added a dedicated low-pass biquad filter with a 120 Hz cutoff frequency for precise kick drum frequency isolation.
