@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.5] - 2026-09-25
+
+### Added
+- Added a pause button long-press interaction (holding for 2 seconds) to toggle the reactive mesh and grid pulsing on or off.
+- Added an animated circular SVG progress ring around the play/pause button to provide visual feedback during long-press actions.
+
+### Changed
+- Updated typography by replacing the `Orbitron` font with `Michroma` for the application loader and main title elements.
+- Refined audio beat detection configuration: increased `ABSOLUTE_MIN_GATE` from 100 to 110 and `BEAT_COOLDOWN_MS` from 340ms to 400ms for more accurate kick recognition.
+- Updated HUD statistics styling and layout, featuring larger stat values styled in `Rajdhani` with a vibrant magenta accent color (`--magenta2`).
+- Expanded and updated the user interaction hint text in the bottom overlay to document the new long-press toggle functionality.
+
+### Fixed
+- Improved DOM structure around the player controls by introducing a dedicated container (`.player-btn-wrap`) to cleanly layer overlay indicators over the play button.
+
 ## [1.4.4] - 2026-06-06
 
 ### Added
